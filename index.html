@@ -149,7 +149,8 @@ let S = {
   // app state
   subs: [], warn: false, warnInfo: false, prevPage: 'survey',
   aggLoading: false, submitPending: false, loadError: false,
-  aggNet: ''
+  aggNet: '',
+  expandedSec: null
 };
 
 /* ── API ─────────────────────────────────────────────────────────── */
@@ -205,20 +206,87 @@ function badge(l){ return `<span style="background:${l.bg};color:${l.tx};font-si
 function secPill(s){ return `<span style="background:${s.bg};color:${s.dk};font-size:10px;padding:2px 8px;border-radius:20px;flex-shrink:0">${s.badge}</span>`; }
 function card(html,mb){ return `<div style="background:#fff;border:.5px solid #dde3ee;border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:${mb||14}px;overflow-x:auto">${html}</div>`; }
 
-/* ── ตารางค่าสถิติ ──────────────────────────────────────────────── */
-function statsTable(scoresBySec, caption){
+/* ── ตารางค่าสถิติ (พร้อม expand รายข้อ) ──────────────────────── */
+function statsTable(scoresBySec, caption, subsForDetail){
   const rows = SEC.map(s=>{ const a=scoresBySec[s.id]||[]; return{...s,m:mean(a),sd:sd(a)}; });
   const all  = Object.values(scoresBySec).flat();
   const om=mean(all), osd=sd(all), ol=lvl(om);
   let h=`<div style="font-size:14px;font-weight:500;margin-bottom:${caption?4:12}px">ตารางค่าสถิติความพึงพอใจ</div>`;
   if(caption) h+=`<div style="font-size:11px;color:#888;margin-bottom:12px">${caption}</div>`;
+  h+=`<div style="font-size:11px;color:#2563A8;margin-bottom:10px">💡 คลิกที่แต่ละด้านเพื่อดูคะแนนรายข้อ</div>`;
   h+=`<table class="stats-tbl"><thead><tr>
     <th>รายการประเมิน</th>
     <th class="tc" style="width:96px">ค่าเฉลี่ย (x̄)</th>
     <th class="tc" style="width:80px">S.D.</th>
     <th class="tc" style="width:110px">แปลผล</th>
   </tr></thead><tbody>`;
-  rows.forEach(r=>{ const l=lvl(r.m); h+=`<tr><td><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${secPill(r)}<span>${r.title}</span></div></td><td class="tc" style="font-weight:600;font-size:14px">${r.m.toFixed(2)}</td><td class="tc" style="color:#666">${r.sd.toFixed(2)}</td><td class="tc">${badge(l)}</td></tr>`; });
+
+  rows.forEach(r=>{
+    const l=lvl(r.m);
+    const isOpen = S.expandedSec === r.id;
+    // แถวหัวด้าน — คลิกได้
+    h+=`<tr onclick="toggleSec('${r.id}')" style="cursor:pointer;transition:background .15s"
+      onmouseover="this.style.background='${r.bg}'" onmouseout="this.style.background=''">
+      <td><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        ${secPill(r)}
+        <span>${r.title}</span>
+        <span style="font-size:11px;color:${r.c};margin-left:auto">${isOpen?'▲ ซ่อน':'▼ รายข้อ'}</span>
+      </div></td>
+      <td class="tc" style="font-weight:600;font-size:14px">${r.m.toFixed(2)}</td>
+      <td class="tc" style="color:#666">${r.sd.toFixed(2)}</td>
+      <td class="tc">${badge(l)}</td>
+    </tr>`;
+
+    // แถวรายข้อ — แสดงเมื่อ expand
+    if(isOpen){
+      let qNum = 0;
+      SEC.forEach(ss=>{ if(ss.id===r.id) return; qNum+=ss.q.length; });
+      // หา offset ของข้อในด้านนี้
+      let offset=0; for(const ss of SEC){ if(ss.id===r.id) break; offset+=ss.q.length; }
+
+      r.q.forEach((q, qi)=>{
+        // คะแนนรายข้อจาก subs
+        const qScores = subsForDetail
+          ? subsForDetail.map(sub=>sub.answers[q.id]||0).filter(v=>v>0)
+          : (scoresBySec[r.id]||[]).slice(qi * (subsForDetail?subsForDetail.length:1));
+        // คำนวณจาก scoresBySec แบบถูกต้อง: เอาทุก sub
+        const qArr = subsForDetail
+          ? subsForDetail.map(sub=>sub.answers[q.id]).filter(v=>v>0)
+          : [];
+        const qm = mean(qArr.length ? qArr : [0]);
+        const qsd = sd(qArr.length ? qArr : [0]);
+        const ql = lvl(qm);
+        // นับ distribution 1-5
+        const dCnt={1:0,2:0,3:0,4:0,5:0};
+        (qArr.length ? qArr : []).forEach(v=>{ if(dCnt[v]!==undefined) dCnt[v]++; });
+        const total=qArr.length||1;
+        const distMini = [5,4,3,2,1].map(v=>{
+          const pct=Math.round((dCnt[v]||0)/total*100);
+          const DC={5:'#1D9E75',4:'#3B6D11',3:'#BA7517',2:'#993C1D',1:'#A32D2D'};
+          return `<div style="display:flex;align-items:center;gap:4px;font-size:10px">
+            <span style="width:10px;text-align:right;color:#666">${v}</span>
+            <div style="width:60px;height:6px;background:#eee;border-radius:3px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:${DC[v]};border-radius:3px"></div>
+            </div>
+            <span style="color:#888;min-width:24px">${pct}%</span>
+          </div>`;
+        }).join('');
+
+        h+=`<tr style="background:${r.bg}44">
+          <td style="padding-left:28px;padding-top:8px;padding-bottom:8px">
+            <div style="font-size:12px;color:#555;margin-bottom:4px">
+              <span style="color:#999;margin-right:4px">ข้อ ${offset+qi+1}.</span>${q.t}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px">${distMini}</div>
+          </td>
+          <td class="tc" style="font-size:13px;font-weight:600;color:${r.c}">${qm>0?qm.toFixed(2):'—'}</td>
+          <td class="tc" style="font-size:11px;color:#888">${qsd>0?qsd.toFixed(2):'—'}</td>
+          <td class="tc">${qm>0?badge(ql):''}</td>
+        </tr>`;
+      });
+    }
+  });
+
   h+=`<tr class="foot"><td>ภาพรวมทั้งหมด</td><td class="tc" style="font-size:15px">${om.toFixed(2)}</td><td class="tc">${osd.toFixed(2)}</td><td class="tc">${badge(ol)}</td></tr></tbody></table>
   <div style="font-size:11px;color:#888;margin-top:10px;line-height:1.8">เกณฑ์แปลผล: 4.50–5.00 = มากที่สุด | 3.50–4.49 = มาก | 2.50–3.49 = ปานกลาง | 1.50–2.49 = น้อย | 1.00–1.49 = น้อยที่สุด</div>`;
   return card(h);
@@ -453,7 +521,7 @@ function resultPage(){
   </div></div>
   <div style="max-width:700px;margin:0 auto;padding:1.5rem">
     ${card(`<div style="text-align:center"><div style="font-size:13px;color:#888;margin-bottom:6px">คะแนนเฉลี่ยรวม</div><div style="font-size:52px;font-weight:500;line-height:1">${ov.toFixed(2)}</div><div style="font-size:13px;color:#888;margin:4px 0 12px">จาก 5.00 คะแนน</div>${badge(l)}<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px">${[['จำนวนข้อ',`${TOTAL} ข้อ`],['จำนวนด้าน','6 ด้าน'],['ผู้ประเมินสะสม',`${n} คน`]].map(([lb,v])=>`<div style="background:#f5f5f5;border-radius:8px;padding:10px 6px"><div style="font-size:11px;color:#888;margin-bottom:3px">${lb}</div><div style="font-size:18px;font-weight:500">${v}</div></div>`).join('')}</div></div>`)}
-    ${statsTable(map,'คำนวณจากคะแนนรายข้อในแต่ละด้านของท่าน')}
+    ${statsTable(map,'คำนวณจากคะแนนรายข้อในแต่ละด้านของท่าน',[{answers:{...ans}}])}
     ${card(`<div style="font-size:14px;font-weight:500;margin-bottom:14px">กราฟคะแนนแต่ละด้าน</div>${bars}`)}
     ${card(`<div style="font-size:14px;font-weight:500;margin-bottom:12px">คะแนนรายข้อ</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:7px">${items}</div>`)}
     ${openAnswers?card(`<div style="font-size:14px;font-weight:500;margin-bottom:12px">ข้อเสนอแนะและความคิดเห็น</div>${openAnswers}`):''}
@@ -562,7 +630,7 @@ function aggPage(){
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
       ${[['ผู้ประเมิน',`${n} คน`,false],['คะแนนเฉลี่ยรวม',ov.toFixed(2),false],['ระดับความพึงพอใจ',badge(l),true]].map(([lb,v,raw])=>`<div style="background:#fff;border:.5px solid #dde3ee;border-radius:12px;padding:1rem;text-align:center"><div style="font-size:11px;color:#777;margin-bottom:5px">${lb}</div>${raw?v:`<div style="font-size:22px;font-weight:500">${v}</div>`}</div>`).join('')}
     </div>
-    ${statsTable(map,`n = ${n} คน · รวม ${totalAns} คำตอบ · S.D. ภาพรวม = ${ovSD.toFixed(2)} · ${filterLabel}`)}
+    ${statsTable(map,`n = ${n} คน · รวม ${totalAns} คำตอบ · S.D. ภาพรวม = ${ovSD.toFixed(2)} · ${filterLabel}`,subs)}
     ${card(`<div style="font-size:14px;font-weight:500;margin-bottom:14px">กราฟคะแนนแต่ละด้าน</div>${bars}`)}
     ${card(`<div style="font-size:14px;font-weight:500;margin-bottom:4px">การกระจายของคะแนน</div><div style="font-size:12px;color:#888;margin-bottom:14px">สัดส่วนคำตอบแต่ละระดับ (${totalAns} คำตอบ)</div><div style="display:flex;gap:10px;align-items:flex-end;height:100px">${distBars}</div>`)}
     `}
@@ -580,7 +648,8 @@ window.setOpen = (k,v)=>{ S[k]=v; };
 window.goPage  = (p)=>{ S.page=p; render(); window.scrollTo(0,0); };
 window.reset_  = ()=>{ S.answers={}; S.openStrength=''; S.openSuggest=''; S.openNeed=''; S.openOther=''; S.warn=false; S.warnInfo=false; S.network=''; S.visitDate=''; S.respondentType=''; S.respondentOther=''; S.aggNet=''; S.page='survey'; render(); window.scrollTo(0,0); };
 
-window.setAggNet = (v)=>{ S.aggNet=v; render(); };
+window.setAggNet = (v)=>{ S.aggNet=v; S.expandedSec=null; render(); };
+window.toggleSec  = (id)=>{ S.expandedSec = S.expandedSec===id ? null : id; render(); };
 
 window.goAgg = async () => {
   S.prevPage=S.page; S.page='agg'; S.aggLoading=true; render();
