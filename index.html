@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>แบบประเมินความพึงพอใจ การนิเทศ สพป.เชียงใหม่ เขต 2</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun',sans-serif;background:#f0f2ed;font-size:14px;color:#222}
+button{font-family:inherit;cursor:pointer;transition:opacity .15s}
+button:hover{opacity:.85}
+input[type=radio]{cursor:pointer;width:17px;height:17px}
+input[type=checkbox]{cursor:pointer;width:15px;height:15px}
+textarea,input[type=text],input[type=date]{font-family:inherit;line-height:1.6}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:36px;height:36px;border:3px solid #e0e0e0;border-top-color:#2563A8;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
+.stats-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.stats-tbl th{padding:9px 12px;font-weight:500;color:#555;background:#EEF2F8;border-bottom:1px solid #cdd5e0;text-align:left}
+.stats-tbl td{padding:9px 12px;border-bottom:.5px solid #eee}
+.tc{text-align:center}
+.stats-tbl tr:nth-child(even) td{background:rgba(0,0,0,.02)}
+.stats-tbl .foot td{background:#DDE9F7;font-weight:600;color:#0C3362;border-top:2px solid #7EAAD9}
+@media(max-width:720px){.two-col{grid-template-columns:1fr!important}.sticky-panel{position:static!important}.radio-grid{grid-template-columns:1fr repeat(5,42px)!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   SCRIPT_URL: วาง URL จาก Google Apps Script ที่ deploy แล้ว
+   ดู Code.gs ด้านล่างสุดของไฟล์นี้สำหรับขั้นตอน
+══════════════════════════════════════════════════════════════════ */
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8_BGYhqsgHHGaWovN5sCLNDzR0HjzTRhlYThkVhEkkLF8RWJeF64sHGZuwR1mFQFi/exec';
+
+/* ─── เครือข่าย ─────────────────────────────────────────────────── */
+const NETWORKS = [
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอแม่ริม 1',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอแม่ริม 2',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอแม่ริม 3',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอสันทราย 1',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอสันทราย 2',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอสันทราย 3',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอสันทราย 4',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอแม่แตง 1',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอแม่แตง 2',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอแม่แตง 3',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอแม่แตง 4',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอแม่แตง 5',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอพร้าว 1',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอพร้าว 2',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอพร้าว 3',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอพร้าว 4',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอสะเมิง 1',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอสะเมิง 2',
+  'เครือข่ายพัฒนาคุณภาพการศึกษาอำเภอสะเมิง 3',
+];
+
+const RESPONDENT_TYPES = ['ผู้บริหารสถานศึกษา','ครูวิชาการ','ครูผู้สอน','บุคลากรทางการศึกษา','อื่นๆ'];
+
+/* ─── ข้อมูลแบบประเมิน 6 ด้าน ──────────────────────────────────── */
+const SEC = [
+  {
+    id:'s1', badge:'ด้านที่ 1',
+    title:'การเตรียมการก่อนการนิเทศ', short:'เตรียมการ',
+    c:'#2563A8', bg:'#E6EFF9', dk:'#0C3362',
+    q:[
+      {id:'q1',  t:'ศึกษานิเทศก์แจ้งวัตถุประสงค์และกำหนดการนิเทศล่วงหน้า'},
+      {id:'q2',  t:'การกำหนดประเด็นการนิเทศสอดคล้องกับบริบทและความต้องการของโรงเรียน'},
+      {id:'q3',  t:'ศึกษานิเทศก์ประสานงานและสื่อสารอย่างชัดเจน'},
+      {id:'q4',  t:'เอกสาร/แบบฟอร์มที่ใช้ในการนิเทศมีความเหมาะสม'},
+    ]
+  },
+  {
+    id:'s2', badge:'ด้านที่ 2',
+    title:'กระบวนการนิเทศ ติดตาม', short:'กระบวนการนิเทศ',
+    c:'#1D9E75', bg:'#E1F5EE', dk:'#085041',
+    q:[
+      {id:'q5',  t:'ศึกษานิเทศก์ให้คำแนะนำด้วยความเป็นกันเอง สร้างบรรยากาศที่ดี'},
+      {id:'q6',  t:'การนิเทศเน้นการพัฒนาและส่งเสริม ไม่ใช่การตรวจสอบ'},
+      {id:'q7',  t:'ศึกษานิเทศก์ใช้เทคนิคการนิเทศที่หลากหลายเหมาะสมกับสถานการณ์'},
+      {id:'q8',  t:'การสนทนากลุ่มและการแลกเปลี่ยนเรียนรู้มีประสิทธิภาพ'},
+      {id:'q9',  t:'การนิเทศโดยใช้พื้นที่เป็นฐาน (Area-Based) ตอบสนองปัญหาเฉพาะพื้นที่'},
+      {id:'q10', t:'ศึกษานิเทศก์มีความรู้ ความเชี่ยวชาญในเรื่องที่นิเทศ'},
+    ]
+  },
+  {
+    id:'s3', badge:'ด้านที่ 3',
+    title:'เนื้อหาและประเด็นการนิเทศ', short:'เนื้อหาการนิเทศ',
+    c:'#6B3FA0', bg:'#F0EBFA', dk:'#3B1D6B',
+    q:[
+      {id:'q11', t:'หลักสูตรสถานศึกษา'},
+      {id:'q12', t:'กระบวนการจัดการเรียนรู้'},
+      {id:'q13', t:'การวัดและประเมินผล'},
+      {id:'q14', t:'สื่อ เทคโนโลยีและแหล่งเรียนรู้'},
+      {id:'q15', t:'การประกันคุณภาพภายในสถานศึกษา'},
+      {id:'q16', t:'การนิเทศภายในสถานศึกษา'},
+      {id:'q17', t:'นโยบาย จุดเน้น สพป.เชียงใหม่ เขต 2'},
+    ]
+  },
+  {
+    id:'s4', badge:'ด้านที่ 4',
+    title:'เครื่องมือและนวัตกรรมการนิเทศ', short:'เครื่องมือ',
+    c:'#BA7517', bg:'#FAEEDA', dk:'#633806',
+    q:[
+      {id:'q18', t:'เครื่องมือและสื่อที่ใช้ในการนิเทศมีความเหมาะสม ครบถ้วน'},
+      {id:'q19', t:'การใช้เทคโนโลยีและสื่อดิจิทัลในการนิเทศ'},
+    ]
+  },
+  {
+    id:'s5', badge:'ด้านที่ 5',
+    title:'ผลลัพธ์และการติดตามผล', short:'ผลลัพธ์',
+    c:'#993C1D', bg:'#FAECE7', dk:'#712B13',
+    q:[
+      {id:'q20', t:'ข้อเสนอแนะมีความชัดเจน เป็นรูปธรรม นำไปปฏิบัติได้จริง'},
+      {id:'q21', t:'การกำหนดแนวทางการพัฒนาและปรับปรุงที่ชัดเจน'},
+      {id:'q22', t:'มีกำหนดการการนิเทศอย่างต่อเนื่อง'},
+      {id:'q23', t:'การนิเทศครั้งนี้ช่วยยกระดับคุณภาพการศึกษาของโรงเรียน'},
+    ]
+  },
+  {
+    id:'s6', badge:'ด้านที่ 6',
+    title:'คุณลักษณะของศึกษานิเทศก์', short:'คุณลักษณะ ศน.',
+    c:'#3B6D11', bg:'#EAF3DE', dk:'#27500A',
+    q:[
+      {id:'q24', t:'บุคลิกภาพและมนุษยสัมพันธ์'},
+      {id:'q25', t:'การเป็นผู้นำทางวิชาการ'},
+      {id:'q26', t:'ความเป็นกัลยาณมิตร มิใช่ผู้ตรวจสอบ'},
+      {id:'q27', t:'การเป็นแบบอย่างที่ดี'},
+      {id:'q28', t:'ความสามารถในการสื่อสารและถ่ายทอดความรู้'},
+    ]
+  },
+];
+
+const ALL_Q   = SEC.flatMap(s => s.q);
+const ALL_IDS = ALL_Q.map(q => q.id);
+const TOTAL   = ALL_Q.length; // 28
+
+/* ── State ─────────────────────────────────────────────────────── */
+let S = {
+  page: 'loading',
+  // ส่วนที่ 1
+  network: '', visitDate: '', respondentType: '', respondentOther: '',
+  // ส่วนที่ 2
+  answers: {},
+  // ส่วนที่ 3
+  openStrength: '', openSuggest: '', openNeed: '', openOther: '',
+  // app state
+  subs: [], warn: false, warnInfo: false, prevPage: 'survey',
+  aggLoading: false, submitPending: false, loadError: false
+};
+
+/* ── API ─────────────────────────────────────────────────────────── */
+async function apiLoad() {
+  if (SCRIPT_URL === 'YOUR_SCRIPT_URL_HERE') {
+    try { const d=localStorage.getItem('survey_local'); if(d) S.subs=JSON.parse(d); } catch{}
+    S.page='survey'; render(); return;
+  }
+  try {
+    const res  = await fetch(SCRIPT_URL+'?t='+Date.now());
+    const json = await res.json();
+    S.subs = json.ok ? (json.data||[]) : [];
+    S.loadError = !json.ok;
+  } catch { S.subs=[]; S.loadError=true; }
+  S.page='survey'; render();
+}
+
+async function apiSave(sub) {
+  if (SCRIPT_URL === 'YOUR_SCRIPT_URL_HERE') {
+    try { localStorage.setItem('survey_local', JSON.stringify(S.subs)); } catch{}
+    return;
+  }
+  try {
+    await fetch(SCRIPT_URL, {
+      method:'POST', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify(sub)
+    });
+  } catch(e){ console.warn('save error',e); }
+}
+
+async function apiRefresh() {
+  if (SCRIPT_URL === 'YOUR_SCRIPT_URL_HERE') return;
+  try {
+    const res  = await fetch(SCRIPT_URL+'?t='+Date.now());
+    const json = await res.json();
+    if(json.ok){ S.subs=json.data||[]; }
+  } catch {}
+}
+
+/* ── สถิติ ──────────────────────────────────────────────────────── */
+function mean(a){ return a.length ? a.reduce((x,y)=>x+y,0)/a.length : 0; }
+function sd(a){ const m=mean(a); return a.length?Math.sqrt(a.reduce((x,y)=>x+Math.pow(y-m,2),0)/a.length):0; }
+function lvl(v){
+  if(v>=4.5)return{t:'มากที่สุด',bg:'#E1F5EE',tx:'#085041'};
+  if(v>=3.5)return{t:'มาก',bg:'#EAF3DE',tx:'#27500A'};
+  if(v>=2.5)return{t:'ปานกลาง',bg:'#FAEEDA',tx:'#633806'};
+  if(v>=1.5)return{t:'น้อย',bg:'#FAECE7',tx:'#712B13'};
+  return{t:'น้อยที่สุด',bg:'#FCEBEB',tx:'#501313'};
+}
+
+/* ── HTML helpers ───────────────────────────────────────────────── */
+function badge(l){ return `<span style="background:${l.bg};color:${l.tx};font-size:11px;padding:3px 10px;border-radius:20px;white-space:nowrap;display:inline-block">${l.t}</span>`; }
+function secPill(s){ return `<span style="background:${s.bg};color:${s.dk};font-size:10px;padding:2px 8px;border-radius:20px;flex-shrink:0">${s.badge}</span>`; }
+function card(html,mb){ return `<div style="background:#fff;border:.5px solid #dde3ee;border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:${mb||14}px;overflow-x:auto">${html}</div>`; }
+
+/* ── ตารางค่าสถิติ ──────────────────────────────────────────────── */
+function statsTable(scoresBySec, caption){
+  const rows = SEC.map(s=>{ const a=scoresBySec[s.id]||[]; return{...s,m:mean(a),sd:sd(a)}; });
+  const all  = Object.values(scoresBySec).flat();
+  const om=mean(all), osd=sd(all), ol=lvl(om);
+  let h=`<div style="font-size:14px;font-weight:500;margin-bottom:${caption?4:12}px">ตารางค่าสถิติความพึงพอใจ</div>`;
+  if(caption) h+=`<div style="font-size:11px;color:#888;margin-bottom:12px">${caption}</div>`;
+  h+=`<table class="stats-tbl"><thead><tr>
+    <th>รายการประเมิน</th>
+    <th class="tc" style="width:96px">ค่าเฉลี่ย (x̄)</th>
+    <th class="tc" style="width:80px">S.D.</th>
+    <th class="tc" style="width:110px">แปลผล</th>
+  </tr></thead><tbody>`;
+  rows.forEach(r=>{ const l=lvl(r.m); h+=`<tr><td><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${secPill(r)}<span>${r.title}</span></div></td><td class="tc" style="font-weight:600;font-size:14px">${r.m.toFixed(2)}</td><td class="tc" style="color:#666">${r.sd.toFixed(2)}</td><td class="tc">${badge(l)}</td></tr>`; });
+  h+=`<tr class="foot"><td>ภาพรวมทั้งหมด</td><td class="tc" style="font-size:15px">${om.toFixed(2)}</td><td class="tc">${osd.toFixed(2)}</td><td class="tc">${badge(ol)}</td></tr></tbody></table>
+  <div style="font-size:11px;color:#888;margin-top:10px;line-height:1.8">เกณฑ์แปลผล: 4.50–5.00 = มากที่สุด | 3.50–4.49 = มาก | 2.50–3.49 = ปานกลาง | 1.50–2.49 = น้อย | 1.00–1.49 = น้อยที่สุด</div>`;
+  return card(h);
+}
+
+/* ── Live Panel ─────────────────────────────────────────────────── */
+function livePanel(){
+  const ans=S.answers, answered=ALL_Q.filter(q=>ans[q.id]);
+  const done=answered.length, ov=done?mean(answered.map(q=>ans[q.id])):0;
+  const pct=(done/TOTAL)*100;
+  const r=46,cx=53,cy=53,circ=2*Math.PI*r,offset=circ*(1-pct/100);
+  const l=ov>0?lvl(ov):null;
+  let bars='';
+  SEC.forEach(s=>{
+    const sa=s.q.filter(q=>ans[q.id]),avg=sa.length?mean(sa.map(q=>ans[q.id])):0;
+    const p=avg>0?((avg-1)/4)*100:0,sl=avg>0?lvl(avg):null;
+    bars+=`<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;flex-wrap:wrap;gap:3px">
+        <div style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${s.c};display:inline-block"></span><span style="font-size:11px">${s.short}</span></div>
+        <div style="display:flex;align-items:center;gap:4px">${sl?badge(sl):''}<span style="font-size:11px;font-weight:500;min-width:26px;text-align:right">${avg>0?avg.toFixed(2):'—'}</span></div>
+      </div>
+      <div style="height:5px;background:#eee;border-radius:3px;overflow:hidden"><div style="height:100%;width:${p}%;background:${s.c};border-radius:3px;transition:width .4s"></div></div>
+      <div style="font-size:10px;color:#aaa;margin-top:1px">${sa.length}/${s.q.length} ข้อ</div>
+    </div>`;
+  });
+  return `<div class="sticky-panel" style="position:sticky;top:56px;background:#fff;border:.5px solid #dde3ee;border-radius:12px;overflow:hidden">
+    <div style="background:#1A4E8C;padding:10px 16px">
+      <div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:#fff">
+        <span style="width:8px;height:8px;border-radius:50%;background:#7EC8F5;display:inline-block;animation:pulse 1.5s infinite"></span>สรุปผลแบบเรียลไทม์
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:1px">อัปเดตทุกครั้งที่เลือกคำตอบ</div>
+    </div>
+    <div style="padding:12px 16px 16px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding-bottom:12px;border-bottom:.5px solid #eee">
+        <svg width="106" height="106" style="flex-shrink:0">
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#d0d0d0" stroke-width="8"/>
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#2563A8" stroke-width="8"
+            stroke-dasharray="${circ} ${circ}" stroke-dashoffset="${offset}"
+            stroke-linecap="round" transform="rotate(-90 ${cx} ${cy})" style="transition:stroke-dashoffset .5s"/>
+          <text x="${cx}" y="${cy-2}" text-anchor="middle" style="font-size:19px;font-weight:600;fill:#222;font-family:Sarabun,sans-serif">${Math.round(pct)}%</text>
+          <text x="${cx}" y="${cy+15}" text-anchor="middle" style="font-size:12px;fill:#888;font-family:Sarabun,sans-serif">${done}/${TOTAL}</text>
+        </svg>
+        <div>
+          <div style="font-size:12px;color:#888">คะแนนขณะนี้</div>
+          <div style="font-size:28px;font-weight:500;line-height:1.1">${ov>0?ov.toFixed(2):'—'}</div>
+          ${l?badge(l):'<span style="font-size:12px;color:#bbb">รอคำตอบ...</span>'}
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:500;color:#888;margin-bottom:8px">คะแนนแต่ละด้าน</div>
+      ${bars}
+      ${done===TOTAL?'<div style="padding:8px 12px;background:#E6EFF9;border-radius:8px;font-size:12px;color:#0C3362;text-align:center;margin-top:6px">✓ ตอบครบทุกข้อแล้ว</div>':''}
+      <button onclick="goAgg()" style="width:100%;margin-top:14px;padding:11px;background:#1A4E8C;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px">
+        📊 ดูสรุปผลทั้งหมด <span style="background:rgba(255,255,255,.25);padding:1px 9px;border-radius:20px;font-size:12px;font-weight:600">${S.subs.length} คน</span>
+      </button>
+    </div>
+  </div>`;
+}
+
+/* ── Loading ────────────────────────────────────────────────────── */
+function loadingHTML(){
+  return `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f0f2ed">
+    <div style="text-align:center">
+      <div class="spinner" style="margin-bottom:16px"></div>
+      <div style="font-size:15px;font-weight:500;color:#333;margin-bottom:6px">กำลังโหลดข้อมูล...</div>
+      <div style="font-size:13px;color:#888">กำลังเชื่อมต่อ Google Sheets</div>
+    </div>
+  </div>`;
+}
+
+/* ── Survey Page ────────────────────────────────────────────────── */
+function surveyPage(){
+  /* ─ ส่วนที่ 1 ─ */
+  let sec1HTML = `<div style="background:#fff;border:.5px solid #dde3ee;border-radius:12px;margin-bottom:14px;overflow:hidden">
+    <div style="background:#E6EFF9;padding:11px 18px;display:flex;align-items:center;gap:10px">
+      <span style="background:#2563A8;color:#fff;font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;flex-shrink:0">ส่วนที่ 1</span>
+      <span style="font-size:14px;font-weight:500;color:#0C3362">ข้อมูลทั่วไป</span>
+    </div>
+    <div style="padding:16px 18px">
+      <!-- เครือข่าย -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:500;margin-bottom:6px;color:#333">
+          สถานศึกษาในสังกัด สพป.เชียงใหม่ เขต 2 ${S.warnInfo&&!S.network?'<span style="color:#c0392b;font-size:12px"> * กรุณาเลือก</span>':''}
+        </div>
+        <select onchange="setInfo('network',this.value)" style="width:100%;padding:9px 12px;border:1.5px solid ${S.warnInfo&&!S.network?'#e74c3c':'#cdd5e0'};border-radius:8px;font-family:Sarabun,sans-serif;font-size:13px;background:#fff;color:#222">
+          <option value="">-- เลือกเครือข่าย --</option>
+          ${NETWORKS.map(n=>`<option value="${n}" ${S.network===n?'selected':''}>${n}</option>`).join('')}
+        </select>
+      </div>
+      <!-- วันที่ -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:6px;color:#333">
+            วันที่ได้รับการนิเทศ ${S.warnInfo&&!S.visitDate?'<span style="color:#c0392b;font-size:12px"> * กรุณาระบุ</span>':''}
+          </div>
+          <input type="date" value="${S.visitDate}" onchange="setInfo('visitDate',this.value)"
+            style="width:100%;padding:9px 12px;border:1.5px solid ${S.warnInfo&&!S.visitDate?'#e74c3c':'#cdd5e0'};border-radius:8px;font-family:Sarabun,sans-serif;font-size:13px">
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:6px;color:#333">
+            ผู้ตอบคำถาม ${S.warnInfo&&!S.respondentType?'<span style="color:#c0392b;font-size:12px"> * กรุณาเลือก</span>':''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            ${RESPONDENT_TYPES.map(t=>`<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px">
+              <input type="radio" name="respType" value="${t}" ${S.respondentType===t?'checked':''} onchange="setInfo('respondentType','${t}')"> ${t}
+            </label>`).join('')}
+            ${S.respondentType==='อื่นๆ'?`<input type="text" value="${S.respondentOther}" oninput="setInfo('respondentOther',this.value)" placeholder="ระบุ..." style="padding:6px 10px;border:1px solid #cdd;border-radius:6px;font-size:13px;width:100%">`:''}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  /* ─ ส่วนที่ 2 ─ */
+  let sec2HTML = '';
+  let qNum = 1;
+  SEC.forEach(s=>{
+    const done=s.q.filter(q=>S.answers[q.id]).length;
+    let qHTML=`<div class="radio-grid" style="display:grid;grid-template-columns:1fr repeat(5,56px);padding:7px 18px 4px;border-bottom:.5px solid #eee">
+      <div></div>
+      ${['น้อยที่สุด (1)','น้อย (2)','ปานกลาง (3)','มาก (4)','มากที่สุด (5)'].map(lb=>`<div style="font-size:10px;color:#888;text-align:center;line-height:1.4">${lb}</div>`).join('')}
+    </div>`;
+    s.q.forEach((q,qi)=>{
+      const isAns=!!S.answers[q.id],hi=S.warn&&!S.answers[q.id];
+      qHTML+=`<div id="row_${q.id}" class="radio-grid" style="display:grid;grid-template-columns:1fr repeat(5,56px);padding:10px 18px;border-top:${qi?'.5px solid #eee':'none'};background:${hi?'rgba(192,57,43,.05)':isAns?'rgba(37,99,168,.02)':''}">
+        <div style="font-size:13px;line-height:1.6;padding-right:8px"><span style="font-size:11px;color:#999;margin-right:4px">${qNum++}.</span>${q.t}</div>
+        ${[1,2,3,4,5].map(v=>`<div style="display:flex;justify-content:center;align-items:center"><input type="radio" name="${q.id}" value="${v}" ${S.answers[q.id]===v?'checked':''} onchange="ans('${q.id}',${v})" style="accent-color:${s.c}"></div>`).join('')}
+      </div>`;
+    });
+    sec2HTML+=`<div style="background:#fff;border:.5px solid #dde3ee;border-radius:12px;margin-bottom:14px;overflow:hidden">
+      <div style="background:${s.bg};padding:11px 18px;display:flex;align-items:center;gap:10px">
+        <span style="background:${s.c};color:#fff;font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;flex-shrink:0">${s.badge}</span>
+        <span style="font-size:14px;font-weight:500;color:${s.dk};flex:1">${s.title}</span>
+        <span style="font-size:12px;color:${s.dk};opacity:.7">${done}/${s.q.length}</span>
+      </div>${qHTML}
+    </div>`;
+  });
+
+  /* ─ ส่วนที่ 3 ─ */
+  const openFields = [
+    {key:'openStrength',label:'จุดเด่นของการนิเทศในครั้งนี้'},
+    {key:'openSuggest',label:'ข้อเสนอแนะเพื่อการพัฒนา'},
+    {key:'openNeed',label:'ความต้องการรับการนิเทศ/ความช่วยเหลือเพิ่มเติม'},
+    {key:'openOther',label:'ข้อคิดเห็นอื่นๆ'},
+  ];
+  let sec3HTML=`<div style="background:#fff;border:.5px solid #dde3ee;border-radius:12px;margin-bottom:14px;overflow:hidden">
+    <div style="background:#F0EBFA;padding:11px 18px;display:flex;align-items:center;gap:10px">
+      <span style="background:#6B3FA0;color:#fff;font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;flex-shrink:0">ส่วนที่ 3</span>
+      <span style="font-size:14px;font-weight:500;color:#3B1D6B">ข้อเสนอแนะเพิ่มเติม</span>
+    </div>
+    <div style="padding:16px 18px;display:grid;gap:14px">`;
+  openFields.forEach(f=>{
+    sec3HTML+=`<div>
+      <div style="font-size:13px;font-weight:500;margin-bottom:6px;color:#3B1D6B">- ${f.label}</div>
+      <textarea rows="3" placeholder="กรุณาระบุ..." oninput="setOpen('${f.key}',this.value)"
+        style="width:100%;padding:10px 14px;font-size:13px;border:1.5px solid #c4a8e8;border-radius:8px;resize:vertical;color:#222;background:#fff"
+      >${S[f.key]||''}</textarea>
+    </div>`;
+  });
+  sec3HTML+=`</div></div>`;
+
+  const done=Object.keys(S.answers).length;
+  const apiWarn = S.loadError ? `<div style="background:#FAEEDA;border:1px solid #e8a800;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#633806">⚠️ ไม่สามารถเชื่อมต่อ Google Sheets ได้ กรุณาตรวจสอบ SCRIPT_URL</div>` : '';
+
+  return `
+  <div style="background:#1A4E8C;padding:.85rem 1.5rem;position:sticky;top:0;z-index:200">
+    <div style="max-width:1080px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:12px">
+      <div>
+        <div style="font-size:11px;color:rgba(255,255,255,.6)">สพป.เชียงใหม่ เขต 2 · การนิเทศ ติดตาม สถานศึกษา ภาคเรียนที่ 1/2569</div>
+        <div style="font-size:14px;font-weight:500;color:#fff">แบบประเมินความพึงพอใจต่อการนิเทศโดยใช้พื้นที่เป็นฐาน</div>
+      </div>
+      <button onclick="goAgg()" style="flex-shrink:0;display:flex;align-items:center;gap:7px;padding:8px 16px;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.5);border-radius:8px;color:#fff;font-size:13px;font-weight:500">
+        📊 ดูสรุปผล <span style="background:rgba(255,255,255,.3);padding:1px 9px;border-radius:20px;font-size:12px;font-weight:700">${S.subs.length}</span>
+      </button>
+    </div>
+  </div>
+  <div class="two-col" style="max-width:1080px;margin:0 auto;padding:1.25rem 1.5rem;display:grid;grid-template-columns:1fr 280px;gap:1.25rem;align-items:start">
+    <div>
+      ${apiWarn}
+      <button onclick="goAgg()" style="width:100%;margin-bottom:14px;padding:13px 20px;background:#fff;border:2px solid #2563A8;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 2px 6px rgba(37,99,168,.12)">
+        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:24px">📊</span>
+          <div style="text-align:left"><div style="font-size:14px;font-weight:600;color:#1A4E8C">ดูสรุปผลการประเมินทั้งหมด</div><div style="font-size:12px;color:#888;margin-top:1px">ไม่ต้องส่งแบบประเมินก็คลิกดูได้เลย</div></div>
+        </div>
+        <div style="text-align:center;flex-shrink:0"><div style="font-size:24px;font-weight:700;color:#1A4E8C;line-height:1">${S.subs.length}</div><div style="font-size:11px;color:#888">คน</div></div>
+      </button>
+      <!-- มาตราส่วน -->
+      <div style="background:#fff;border:.5px solid #dde3ee;border-radius:10px;padding:9px 14px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center">
+        <span style="font-size:12px;font-weight:500;color:#888">มาตราส่วนระดับความพึงพอใจ:</span>
+        ${[[5,'มากที่สุด','#1D9E75'],[4,'มาก','#3B6D11'],[3,'ปานกลาง','#BA7517'],[2,'น้อย','#993C1D'],[1,'น้อยที่สุด','#A32D2D']].map(([v,lb,c])=>`<span style="font-size:12px;color:#888"><b style="color:${c}">${v}</b> = ${lb}</span>`).join('')}
+      </div>
+      ${sec1HTML}
+      <div style="background:#E6EFF9;border:.5px solid #c0d3ee;border-radius:10px;padding:9px 14px;margin-bottom:14px;font-size:13px;font-weight:500;color:#0C3362">ส่วนที่ 2 — การประเมินความพึงพอใจ (${done}/${TOTAL} ข้อ)</div>
+      ${sec2HTML}
+      ${sec3HTML}
+      ${S.warn?'<div style="color:#712B13;font-size:13px;margin-bottom:12px;padding:10px 14px;background:#FAECE7;border-radius:8px">⚠️ กรุณาตอบให้ครบทุกข้อ (ส่วนที่ 2) ก่อนส่งแบบประเมิน</div>':''}
+      ${S.warnInfo?'<div style="color:#633806;font-size:13px;margin-bottom:12px;padding:10px 14px;background:#FAEEDA;border-radius:8px">⚠️ กรุณากรอกข้อมูลทั่วไป (เครือข่าย, วันที่, ประเภทผู้ตอบ) ให้ครบก่อนส่ง</div>':''}
+      ${S.submitPending?'<div style="color:#0C3362;font-size:13px;margin-bottom:12px;padding:10px 14px;background:#E6EFF9;border-radius:8px">⏳ กำลังบันทึกลง Google Sheets...</div>':''}
+      <div style="display:flex;gap:10px">
+        <button onclick="reset_()" style="padding:11px 20px;background:transparent;border:1px solid #ccc;border-radius:8px;font-size:13px;color:#666">เริ่มใหม่</button>
+        <button onclick="submit_()" style="flex:1;padding:12px;background:#1A4E8C;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:500">ส่งแบบประเมิน (${done}/${TOTAL}) →</button>
+      </div>
+    </div>
+    ${livePanel()}
+  </div>`;
+}
+
+/* ── Result Page ────────────────────────────────────────────────── */
+function resultPage(){
+  const ans=S.answers;
+  const secScores=SEC.map(s=>({...s,avg:mean(s.q.map(q=>ans[q.id]||0))}));
+  const ov=mean(ALL_Q.map(q=>ans[q.id]||0)),l=lvl(ov),n=S.subs.length;
+  const map={}; SEC.forEach(s=>{map[s.id]=s.q.map(q=>ans[q.id]||0);});
+  let bars='';
+  secScores.forEach(s=>{
+    const p=((s.avg-1)/4)*100,sl=lvl(s.avg);
+    bars+=`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;flex-wrap:wrap;gap:5px"><div style="display:flex;align-items:center;gap:7px">${secPill(s)}<span style="font-size:13px">${s.title}</span></div><div style="display:flex;align-items:center;gap:7px;flex-shrink:0">${badge(sl)}<span style="font-size:15px;font-weight:600">${s.avg.toFixed(2)}</span></div></div><div style="height:10px;background:#eee;border-radius:5px;overflow:hidden"><div style="height:100%;width:${p}%;background:${s.c};border-radius:5px"></div></div></div>`;
+  });
+  let items=''; ALL_Q.forEach((q,i)=>{const v=ans[q.id]||0,il=lvl(v);items+=`<div style="background:#f5f5f5;border-radius:8px;padding:7px;text-align:center"><div style="font-size:10px;color:#888;margin-bottom:3px">ข้อ ${i+1}</div><div style="font-size:18px;font-weight:500">${v}</div>${badge(il)}</div>`;});
+  const openFields=[
+    {key:'openStrength',label:'จุดเด่น'},
+    {key:'openSuggest',label:'ข้อเสนอแนะ'},
+    {key:'openNeed',label:'ความต้องการ'},
+    {key:'openOther',label:'ข้อคิดเห็นอื่นๆ'},
+  ];
+  const openAnswers=openFields.filter(f=>S[f.key]).map(f=>`<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:500;color:#888;margin-bottom:4px">${f.label}</div><div style="font-size:13px;line-height:1.7;background:#f5f5f5;padding:10px 12px;border-radius:8px">${S[f.key]}</div></div>`).join('');
+  return `
+  <div style="background:#1A4E8C;padding:1rem 1.5rem"><div style="max-width:700px;margin:0 auto">
+    <div style="font-size:11px;color:rgba(255,255,255,.6)">สพป.เชียงใหม่ เขต 2 · การนิเทศ ภาคเรียนที่ 1/2569</div>
+    <div style="font-size:15px;font-weight:500;color:#fff">ผลการประเมินความพึงพอใจ</div>
+    <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:2px">ส่งเรียบร้อยแล้ว · ${new Date().toLocaleDateString('th-TH',{dateStyle:'long'})}</div>
+  </div></div>
+  <div style="max-width:700px;margin:0 auto;padding:1.5rem">
+    ${card(`<div style="text-align:center"><div style="font-size:13px;color:#888;margin-bottom:6px">คะแนนเฉลี่ยรวม</div><div style="font-size:52px;font-weight:500;line-height:1">${ov.toFixed(2)}</div><div style="font-size:13px;color:#888;margin:4px 0 12px">จาก 5.00 คะแนน</div>${badge(l)}<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px">${[['จำนวนข้อ',`${TOTAL} ข้อ`],['จำนวนด้าน','6 ด้าน'],['ผู้ประเมินสะสม',`${n} คน`]].map(([lb,v])=>`<div style="background:#f5f5f5;border-radius:8px;padding:10px 6px"><div style="font-size:11px;color:#888;margin-bottom:3px">${lb}</div><div style="font-size:18px;font-weight:500">${v}</div></div>`).join('')}</div></div>`)}
+    ${statsTable(map,'คำนวณจากคะแนนรายข้อในแต่ละด้านของท่าน')}
+    ${card(`<div style="font-size:14px;font-weight:500;margin-bottom:14px">กราฟคะแนนแต่ละด้าน</div>${bars}`)}
+    ${card(`<div style="font-size:14px;font-weight:500;margin-bottom:12px">คะแนนรายข้อ</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:7px">${items}</div>`)}
+    ${openAnswers?card(`<div style="font-size:14px;font-weight:500;margin-bottom:12px">ข้อเสนอแนะและความคิดเห็น</div>${openAnswers}`):''}
+    <div style="display:flex;gap:10px">
+      <button onclick="reset_()" style="flex:1;padding:12px;background:transparent;border:1px solid #ccc;border-radius:8px;font-size:13px;color:#666">ประเมินใหม่</button>
+      <button onclick="goAgg()" style="flex:2;padding:12px;background:#1A4E8C;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500">📊 ดูสรุปผลทั้งหมด (${n} คน) →</button>
+    </div>
+  </div>`;
+}
+
+/* ── Aggregate Page ─────────────────────────────────────────────── */
+function aggPage(){
+  const subs=S.subs,n=subs.length,back=S.prevPage;
+  const loadingBar=S.aggLoading?`<div style="background:#E6EFF9;border:1px solid #2563A8;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#0C3362;display:flex;align-items:center;gap:8px"><div class="spinner" style="width:18px;height:18px;border-width:2px;border-top-color:#2563A8"></div>กำลังโหลดข้อมูลล่าสุด...</div>`:'';
+  if(!n) return `
+    <div style="background:#1A4E8C;padding:1rem 1.5rem;display:flex;align-items:center;gap:12px">
+      <button onclick="goPage('${back}')" style="background:rgba(255,255,255,.2);border:none;border-radius:8px;padding:7px 16px;color:#fff;font-size:13px">← กลับ</button>
+      <div style="font-size:15px;font-weight:500;color:#fff">สรุปผลภาพรวม</div>
+    </div>
+    <div style="max-width:680px;margin:0 auto;padding:4rem 1.5rem;text-align:center">
+      ${loadingBar}
+      ${!S.aggLoading?`<div style="font-size:56px;margin-bottom:16px">📋</div>
+      <div style="font-size:17px;font-weight:500;color:#111;margin-bottom:10px">ยังไม่มีข้อมูลการประเมิน</div>
+      <div style="font-size:13px;color:#777;line-height:1.8;margin-bottom:28px">เมื่อมีผู้ส่งแบบประเมินแล้ว สรุปผลจะแสดงที่นี่</div>
+      <button onclick="goPage('${back}')" style="padding:12px 32px;background:#1A4E8C;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500">กลับไปทำแบบประเมิน</button>`:''}
+    </div>`;
+  const secAvgs=SEC.map(s=>({...s,avg:mean(subs.map(sub=>mean(s.q.map(q=>sub.answers[q.id]||0))))}));
+  const ov=mean(secAvgs.map(s=>s.avg)),l=lvl(ov);
+  const dist={5:0,4:0,3:0,2:0,1:0};
+  subs.forEach(sub=>ALL_IDS.forEach(id=>{const v=sub.answers[id];if(v)dist[v]++;}));
+  const totalAns=n*TOTAL,maxD=Math.max(...Object.values(dist));
+  const map={}; SEC.forEach(s=>{map[s.id]=subs.flatMap(sub=>s.q.map(q=>sub.answers[q.id]||0));});
+  let bars='';
+  secAvgs.forEach(s=>{
+    const p=((s.avg-1)/4)*100,sl=lvl(s.avg);
+    bars+=`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;flex-wrap:wrap;gap:5px"><div style="display:flex;align-items:center;gap:7px">${secPill(s)}<span style="font-size:13px">${s.title}</span></div><div style="display:flex;align-items:center;gap:7px;flex-shrink:0">${badge(sl)}<span style="font-size:15px;font-weight:600">${s.avg.toFixed(2)}</span></div></div><div style="height:10px;background:#eee;border-radius:5px;overflow:hidden"><div style="height:100%;width:${p}%;background:${s.c};border-radius:5px"></div></div></div>`;
+  });
+  const DC={5:'#1D9E75',4:'#3B6D11',3:'#BA7517',2:'#993C1D',1:'#A32D2D'};
+  const DL={5:'มากที่สุด',4:'มาก',3:'ปานกลาง',2:'น้อย',1:'น้อยที่สุด'};
+  let distBars='';
+  [5,4,3,2,1].forEach(v=>{
+    const cnt=dist[v]||0,pV=totalAns?(cnt/totalAns)*100:0,bH=maxD?Math.max((cnt/maxD)*72,4):4;
+    distBars+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;justify-content:flex-end;height:100%"><span style="font-size:11px;color:#888">${pV.toFixed(1)}%</span><div style="width:100%;background:${DC[v]};border-radius:4px 4px 0 0;height:${bH}px"></div><div style="font-size:10px;color:#888;text-align:center;line-height:1.3"><b>${v}</b><br>${DL[v]}</div></div>`;
+  });
+  // เครือข่าย summary
+  const netMap={};
+  subs.forEach(sub=>{ if(sub.network){ netMap[sub.network]=(netMap[sub.network]||0)+1; } });
+  const netRows=Object.entries(netMap).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:.5px solid #eee"><span style="font-size:12px;color:#444">${k}</span><span style="font-size:12px;font-weight:500;background:#E6EFF9;color:#0C3362;padding:2px 8px;border-radius:20px">${v} คน</span></div>`).join('');
+  return `
+  <div style="background:#1A4E8C;padding:1rem 1.5rem;display:flex;align-items:center;gap:12px">
+    <button onclick="goPage('${back}')" style="background:rgba(255,255,255,.2);border:none;border-radius:8px;padding:7px 16px;color:#fff;font-size:13px;font-weight:500">← กลับ</button>
+    <div style="flex:1">
+      <div style="font-size:15px;font-weight:500;color:#fff">สรุปผลภาพรวมทั้งหมด</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.65)">ผู้ประเมิน ${n} คน · ${new Date().toLocaleDateString('th-TH',{dateStyle:'medium'})}</div>
+    </div>
+    <button onclick="refreshAgg()" style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:8px;padding:7px 14px;color:#fff;font-size:12px;font-weight:500">🔄 รีเฟรช</button>
+  </div>
+  <div style="max-width:700px;margin:0 auto;padding:1.5rem">
+    ${loadingBar}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      ${[['ผู้ประเมินทั้งหมด',`${n} คน`,false],['คะแนนเฉลี่ยรวม',ov.toFixed(2),false],['ระดับความพึงพอใจ',badge(l),true]].map(([lb,v,raw])=>`<div style="background:#fff;border:.5px solid #dde3ee;border-radius:12px;padding:1rem;text-align:center"><div style="font-size:11px;color:#777;margin-bottom:5px">${lb}</div>${raw?v:`<div style="font-size:22px;font-weight:500">${v}</div>`}</div>`).join('')}
+    </div>
+    ${statsTable(map,`คำนวณจากคำตอบของผู้รับการนิเทศทั้งหมด (n = ${n} คน, รวม ${totalAns} คำตอบ)`)}
+    ${card(`<div style="font-size:14px;font-weight:500;margin-bottom:14px">กราฟเปรียบเทียบแต่ละด้าน</div>${bars}`)}
+    ${card(`<div style="font-size:14px;font-weight:500;margin-bottom:4px">การกระจายของคะแนน</div><div style="font-size:12px;color:#888;margin-bottom:14px">สัดส่วนคำตอบแต่ละระดับ (${totalAns} คำตอบ)</div><div style="display:flex;gap:10px;align-items:flex-end;height:100px">${distBars}</div>`)}
+    ${netRows?card(`<div style="font-size:14px;font-weight:500;margin-bottom:10px">ผู้ตอบแบ่งตามเครือข่าย (Top 8)</div>${netRows}`):''}
+    <div style="display:flex;gap:10px">
+      <button onclick="goPage('${back}')" style="flex:1;padding:12px;background:transparent;border:1px solid #ccc;border-radius:8px;font-size:13px;color:#666">← กลับ</button>
+      <button onclick="reset_()" style="flex:2;padding:12px;background:#1A4E8C;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500">เริ่มประเมินใหม่</button>
+    </div>
+  </div>`;
+}
+
+/* ── Actions ────────────────────────────────────────────────────── */
+window.ans     = (id,v)=>{ S.answers[id]=v; S.warn=false; render(); };
+window.setInfo = (k,v)=>{ S[k]=v; S.warnInfo=false; render(); };
+window.setOpen = (k,v)=>{ S[k]=v; };
+window.goPage  = (p)=>{ S.page=p; render(); window.scrollTo(0,0); };
+window.reset_  = ()=>{ S.answers={}; S.openStrength=''; S.openSuggest=''; S.openNeed=''; S.openOther=''; S.warn=false; S.warnInfo=false; S.network=''; S.visitDate=''; S.respondentType=''; S.respondentOther=''; S.page='survey'; render(); window.scrollTo(0,0); };
+
+window.goAgg = async () => {
+  S.prevPage=S.page; S.page='agg'; S.aggLoading=true; render();
+  await apiRefresh();
+  S.aggLoading=false; render();
+};
+window.refreshAgg = async () => { S.aggLoading=true; render(); await apiRefresh(); S.aggLoading=false; render(); };
+
+window.submit_ = async () => {
+  const missing=ALL_IDS.filter(id=>!S.answers[id]);
+  if(missing.length){ S.warn=true; render(); const el=document.getElementById('row_'+missing[0]); if(el)el.scrollIntoView({behavior:'smooth',block:'center'}); return; }
+  if(!S.network||!S.visitDate||!S.respondentType){ S.warnInfo=true; render(); window.scrollTo(0,0); return; }
+  const sub={
+    id:Date.now(),
+    network:S.network, visitDate:S.visitDate,
+    respondentType:S.respondentType+(S.respondentType==='อื่นๆ'&&S.respondentOther?' ('+S.respondentOther+')':''),
+    answers:{...S.answers},
+    openStrength:S.openStrength, openSuggest:S.openSuggest, openNeed:S.openNeed, openOther:S.openOther
+  };
+  S.subs.push(sub);
+  S.prevPage='survey'; S.page='result'; S.submitPending=true; render();
+  await apiSave(sub);
+  S.submitPending=false; render();
+};
+
+/* ── Render ─────────────────────────────────────────────────────── */
+function render(){
+  const app=document.getElementById('app');
+  if     (S.page==='loading') app.innerHTML=loadingHTML();
+  else if(S.page==='survey')  app.innerHTML=surveyPage();
+  else if(S.page==='result')  app.innerHTML=resultPage();
+  else                        app.innerHTML=aggPage();
+}
+
+render();
+apiLoad();
+</script>
+
+<!--
+═══════════════════════════════════════════════════════════════════
+  Code.gs — Google Apps Script (วางใน https://script.google.com)
+  แล้ว Deploy > New deployment > Web app > Execute as Me > Anyone
+═══════════════════════════════════════════════════════════════════
+
+const SHEET_ID  = '1D9Ju_FS-ucZPMR_PmewBK4jNPpZqEdPvAiTuKs3uQKI';
+const SHEET_TAB = 'ชีต1';
+
+function doGet(e) {
+  const ss   = SpreadsheetApp.openById(SHEET_ID);
+  const sh   = ss.getSheetByName(SHEET_TAB);
+  const rows = sh.getDataRange().getValues();
+  if (rows.length <= 1) return out({ok:true, data:[]});
+  const headers = rows[0];
+  const data = rows.slice(1).map(r => {
+    const obj = {};
+    headers.forEach((h,i) => obj[h] = r[i]);
+    // rebuild answers object
+    const answers = {};
+    for (let q = 1; q <= 28; q++) {
+      const v = obj['q'+q];
+      if (v) answers['q'+q] = Number(v);
+    }
+    return {
+      id:         obj['id'] || Date.now(),
+      network:    obj['network'] || '',
+      visitDate:  obj['visitDate'] || '',
+      respondentType: obj['respondentType'] || '',
+      answers,
+      openStrength: obj['openStrength'] || '',
+      openSuggest:  obj['openSuggest']  || '',
+      openNeed:     obj['openNeed']     || '',
+      openOther:    obj['openOther']    || '',
+    };
+  });
+  return out({ok:true, data});
+}
+
+function doPost(e) {
+  try {
+    const sub  = JSON.parse(e.postData.contents);
+    const ss   = SpreadsheetApp.openById(SHEET_ID);
+    const sh   = ss.getSheetByName(SHEET_TAB);
+    if (sh.getLastRow() === 0) {
+      // สร้าง header row
+      const headers = ['id','network','visitDate','respondentType',
+        ...Array.from({length:28},(_,i)=>'q'+(i+1)),
+        'openStrength','openSuggest','openNeed','openOther','submittedAt'];
+      sh.appendRow(headers);
+    }
+    const row = [
+      sub.id, sub.network||'', sub.visitDate||'', sub.respondentType||'',
+      ...Array.from({length:28},(_,i)=>sub.answers['q'+(i+1)]||''),
+      sub.openStrength||'', sub.openSuggest||'', sub.openNeed||'', sub.openOther||'',
+      new Date().toLocaleString('th-TH',{timeZone:'Asia/Bangkok'})
+    ];
+    sh.appendRow(row);
+    return out({ok:true});
+  } catch(err) {
+    return out({ok:false, error:err.message});
+  }
+}
+
+function out(data) {
+  return ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+-->
+</body>
+</html>
