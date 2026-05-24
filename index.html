@@ -314,6 +314,7 @@ function surveyPage(){
             วันที่ได้รับการนิเทศ ${S.warnInfo&&!S.visitDate?'<span style="color:#c0392b;font-size:12px"> * กรุณาระบุ</span>':''}
           </div>
           <input type="date" value="${S.visitDate}" onchange="setInfo('visitDate',this.value)"
+            max="${new Date().toISOString().split('T')[0]}"
             style="width:100%;padding:9px 12px;border:1.5px solid ${S.warnInfo&&!S.visitDate?'#e74c3c':'#cdd5e0'};border-radius:8px;font-family:Sarabun,sans-serif;font-size:13px">
         </div>
         <div>
