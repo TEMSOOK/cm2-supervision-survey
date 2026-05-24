@@ -245,11 +245,7 @@ function statsTable(scoresBySec, caption, subsForDetail){
       let offset=0; for(const ss of SEC){ if(ss.id===r.id) break; offset+=ss.q.length; }
 
       r.q.forEach((q, qi)=>{
-        // คะแนนรายข้อจาก subs
-        const qScores = subsForDetail
-          ? subsForDetail.map(sub=>sub.answers[q.id]||0).filter(v=>v>0)
-          : (scoresBySec[r.id]||[]).slice(qi * (subsForDetail?subsForDetail.length:1));
-        // คำนวณจาก scoresBySec แบบถูกต้อง: เอาทุก sub
+        // คำนวณคะแนนรายข้อจากทุก sub
         const qArr = subsForDetail
           ? subsForDetail.map(sub=>sub.answers[q.id]).filter(v=>v>0)
           : [];
