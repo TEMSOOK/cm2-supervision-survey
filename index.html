@@ -148,7 +148,8 @@ let S = {
   openStrength: '', openSuggest: '', openNeed: '', openOther: '',
   // app state
   subs: [], warn: false, warnInfo: false, prevPage: 'survey',
-  aggLoading: false, submitPending: false, loadError: false
+  aggLoading: false, submitPending: false, loadError: false,
+  aggNet: ''
 };
 
 /* ── API ─────────────────────────────────────────────────────────── */
@@ -323,7 +324,7 @@ function surveyPage(){
             ${RESPONDENT_TYPES.map(t=>`<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px">
               <input type="radio" name="respType" value="${t}" ${S.respondentType===t?'checked':''} onchange="setInfo('respondentType','${t}')"> ${t}
             </label>`).join('')}
-            ${S.respondentType==='อื่นๆ'?`<input type="text" value="${S.respondentOther}" oninput="setInfo('respondentOther',this.value)" placeholder="ระบุ..." style="padding:6px 10px;border:1px solid #cdd;border-radius:6px;font-size:13px;width:100%">`:''}
+            ${S.respondentType==='อื่นๆ'?`<input type="text" id="otherInput" value="${S.respondentOther}" oninput="S.respondentOther=this.value" onblur="S.respondentOther=this.value" placeholder="ระบุ..." style="padding:6px 10px;border:1px solid #cdd;border-radius:6px;font-size:13px;width:100%">`:''}
           </div>
         </div>
       </div>
@@ -461,11 +462,18 @@ function resultPage(){
   </div>`;
 }
 
+/* ── helper: build stats map from a subset of subs ──────────────── */
+function buildMap(subs){
+  const map={};
+  SEC.forEach(s=>{ map[s.id]=subs.flatMap(sub=>s.q.map(q=>sub.answers[q.id]||0).filter(v=>v>0)); });
+  return map;
+}
+
 /* ── Aggregate Page ─────────────────────────────────────────────── */
 function aggPage(){
-  const subs=S.subs,n=subs.length,back=S.prevPage;
+  const allSubs=S.subs, totalN=allSubs.length, back=S.prevPage;
   const loadingBar=S.aggLoading?`<div style="background:#E6EFF9;border:1px solid #2563A8;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#0C3362;display:flex;align-items:center;gap:8px"><div class="spinner" style="width:18px;height:18px;border-width:2px;border-top-color:#2563A8"></div>กำลังโหลดข้อมูลล่าสุด...</div>`:'';
-  if(!n) return `
+  if(!totalN) return `
     <div style="background:#1A4E8C;padding:1rem 1.5rem;display:flex;align-items:center;gap:12px">
       <button onclick="goPage('${back}')" style="background:rgba(255,255,255,.2);border:none;border-radius:8px;padding:7px 16px;color:#fff;font-size:13px">← กลับ</button>
       <div style="font-size:15px;font-weight:500;color:#fff">สรุปผลภาพรวม</div>
@@ -477,47 +485,86 @@ function aggPage(){
       <div style="font-size:13px;color:#777;line-height:1.8;margin-bottom:28px">เมื่อมีผู้ส่งแบบประเมินแล้ว สรุปผลจะแสดงที่นี่</div>
       <button onclick="goPage('${back}')" style="padding:12px 32px;background:#1A4E8C;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500">กลับไปทำแบบประเมิน</button>`:''}
     </div>`;
-  const secAvgs=SEC.map(s=>({...s,avg:mean(subs.map(sub=>mean(s.q.map(q=>sub.answers[q.id]||0))))}));
-  const ov=mean(secAvgs.map(s=>s.avg)),l=lvl(ov);
+
+  /* ── กรองเครือข่าย ──────────────────────────────────── */
+  const netSet=[...new Set(allSubs.map(s=>s.network).filter(Boolean))].sort();
+  const subs = S.aggNet ? allSubs.filter(s=>s.network===S.aggNet) : allSubs;
+  const n = subs.length;
+  const filterLabel = S.aggNet ? S.aggNet : 'ทุกเครือข่าย';
+
+  /* ── คำนวณสถิติที่ถูกต้อง ──────────────────────────── */
+  // map[sectionId] = array ของคะแนนทุกข้อทุกคนในด้านนั้น (ถูกต้อง)
+  const map = buildMap(subs);
+
+  // overall = เอาคะแนนทุกข้อของทุกคนมารวมกัน (ถูกต้อง ไม่ใช่ mean of means)
+  const allScores = Object.values(map).flat();
+  const ov = mean(allScores), ovSD = sd(allScores), l = lvl(ov);
+
+  // คะแนนเฉลี่ยแต่ละด้าน (mean ของ array ข้อทั้งหมดในด้านนั้น)
+  const secAvgs = SEC.map(s=>({...s, avg:mean(map[s.id]||[]), sdv:sd(map[s.id]||[])}));
+
+  /* ── การกระจายคะแนน ─────────────────────────────────── */
   const dist={5:0,4:0,3:0,2:0,1:0};
   subs.forEach(sub=>ALL_IDS.forEach(id=>{const v=sub.answers[id];if(v)dist[v]++;}));
-  const totalAns=n*TOTAL,maxD=Math.max(...Object.values(dist));
-  const map={}; SEC.forEach(s=>{map[s.id]=subs.flatMap(sub=>s.q.map(q=>sub.answers[q.id]||0));});
+  const totalAns=allScores.length, maxD=Math.max(...Object.values(dist));
+
+  /* ── กราฟแต่ละด้าน ───────────────────────────────────── */
   let bars='';
   secAvgs.forEach(s=>{
-    const p=((s.avg-1)/4)*100,sl=lvl(s.avg);
-    bars+=`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;flex-wrap:wrap;gap:5px"><div style="display:flex;align-items:center;gap:7px">${secPill(s)}<span style="font-size:13px">${s.title}</span></div><div style="display:flex;align-items:center;gap:7px;flex-shrink:0">${badge(sl)}<span style="font-size:15px;font-weight:600">${s.avg.toFixed(2)}</span></div></div><div style="height:10px;background:#eee;border-radius:5px;overflow:hidden"><div style="height:100%;width:${p}%;background:${s.c};border-radius:5px"></div></div></div>`;
+    const p=s.avg>0?((s.avg-1)/4)*100:0, sl=lvl(s.avg);
+    bars+=`<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;flex-wrap:wrap;gap:5px">
+        <div style="display:flex;align-items:center;gap:7px">${secPill(s)}<span style="font-size:13px">${s.title}</span></div>
+        <div style="display:flex;align-items:center;gap:7px;flex-shrink:0">${badge(sl)}<span style="font-size:15px;font-weight:600">${s.avg.toFixed(2)}</span><span style="font-size:11px;color:#aaa">±${s.sdv.toFixed(2)}</span></div>
+      </div>
+      <div style="height:10px;background:#eee;border-radius:5px;overflow:hidden"><div style="height:100%;width:${p}%;background:${s.c};border-radius:5px;transition:width .5s"></div></div>
+    </div>`;
   });
+
+  /* ── การกระจาย ───────────────────────────────────────── */
   const DC={5:'#1D9E75',4:'#3B6D11',3:'#BA7517',2:'#993C1D',1:'#A32D2D'};
   const DL={5:'มากที่สุด',4:'มาก',3:'ปานกลาง',2:'น้อย',1:'น้อยที่สุด'};
   let distBars='';
   [5,4,3,2,1].forEach(v=>{
-    const cnt=dist[v]||0,pV=totalAns?(cnt/totalAns)*100:0,bH=maxD?Math.max((cnt/maxD)*72,4):4;
-    distBars+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;justify-content:flex-end;height:100%"><span style="font-size:11px;color:#888">${pV.toFixed(1)}%</span><div style="width:100%;background:${DC[v]};border-radius:4px 4px 0 0;height:${bH}px"></div><div style="font-size:10px;color:#888;text-align:center;line-height:1.3"><b>${v}</b><br>${DL[v]}</div></div>`;
+    const cnt=dist[v]||0, pV=totalAns?(cnt/totalAns)*100:0, bH=maxD?Math.max((cnt/maxD)*72,4):4;
+    distBars+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;justify-content:flex-end;height:100%">
+      <span style="font-size:11px;color:#888">${pV.toFixed(1)}%</span>
+      <div style="width:100%;background:${DC[v]};border-radius:4px 4px 0 0;height:${bH}px"></div>
+      <div style="font-size:10px;color:#888;text-align:center;line-height:1.3"><b>${v}</b><br>${DL[v]}</div>
+    </div>`;
   });
-  // เครือข่าย summary
-  const netMap={};
-  subs.forEach(sub=>{ if(sub.network){ netMap[sub.network]=(netMap[sub.network]||0)+1; } });
-  const netRows=Object.entries(netMap).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:.5px solid #eee"><span style="font-size:12px;color:#444">${k}</span><span style="font-size:12px;font-weight:500;background:#E6EFF9;color:#0C3362;padding:2px 8px;border-radius:20px">${v} คน</span></div>`).join('');
+
+  /* ── dropdown filter ─────────────────────────────────── */
+  const filterBar = `<div style="background:#fff;border:.5px solid #dde3ee;border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span style="font-size:12px;font-weight:500;color:#555;flex-shrink:0">🔍 กรองเครือข่าย:</span>
+    <select onchange="setAggNet(this.value)" style="flex:1;min-width:200px;padding:7px 10px;border:1.5px solid #c0d3ee;border-radius:8px;font-family:Sarabun,sans-serif;font-size:13px;background:#fff;color:#222">
+      <option value="">ทุกเครือข่าย (${totalN} คน)</option>
+      ${netSet.map(net=>`<option value="${net}" ${S.aggNet===net?'selected':''}>${net} (${allSubs.filter(s=>s.network===net).length} คน)</option>`).join('')}
+    </select>
+    ${S.aggNet?`<button onclick="setAggNet('')" style="padding:7px 14px;background:#FAECE7;color:#712B13;border:none;border-radius:8px;font-size:12px;font-family:Sarabun,sans-serif">✕ ล้างตัวกรอง</button>`:''}
+  </div>`;
+
   return `
   <div style="background:#1A4E8C;padding:1rem 1.5rem;display:flex;align-items:center;gap:12px">
     <button onclick="goPage('${back}')" style="background:rgba(255,255,255,.2);border:none;border-radius:8px;padding:7px 16px;color:#fff;font-size:13px;font-weight:500">← กลับ</button>
     <div style="flex:1">
-      <div style="font-size:15px;font-weight:500;color:#fff">สรุปผลภาพรวมทั้งหมด</div>
-      <div style="font-size:12px;color:rgba(255,255,255,.65)">ผู้ประเมิน ${n} คน · ${new Date().toLocaleDateString('th-TH',{dateStyle:'medium'})}</div>
+      <div style="font-size:15px;font-weight:500;color:#fff">สรุปผลการประเมิน${S.aggNet?' — '+S.aggNet.replace('เครือข่ายพัฒนาคุณภาพการศึกษา','เครือข่าย').trim():' ภาพรวมทั้งหมด'}</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.65)">ผู้ประเมิน ${n}${S.aggNet?' / '+totalN:''} คน · ${new Date().toLocaleDateString('th-TH',{dateStyle:'medium'})}</div>
     </div>
     <button onclick="refreshAgg()" style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:8px;padding:7px 14px;color:#fff;font-size:12px;font-weight:500">🔄 รีเฟรช</button>
   </div>
-  <div style="max-width:700px;margin:0 auto;padding:1.5rem">
+  <div style="max-width:720px;margin:0 auto;padding:1.5rem">
     ${loadingBar}
+    ${filterBar}
+    ${n===0?`<div style="background:#FAEEDA;border-radius:10px;padding:2rem;text-align:center;color:#633806;font-size:13px">ไม่มีข้อมูลสำหรับเครือข่ายที่เลือก</div>`:`
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
-      ${[['ผู้ประเมินทั้งหมด',`${n} คน`,false],['คะแนนเฉลี่ยรวม',ov.toFixed(2),false],['ระดับความพึงพอใจ',badge(l),true]].map(([lb,v,raw])=>`<div style="background:#fff;border:.5px solid #dde3ee;border-radius:12px;padding:1rem;text-align:center"><div style="font-size:11px;color:#777;margin-bottom:5px">${lb}</div>${raw?v:`<div style="font-size:22px;font-weight:500">${v}</div>`}</div>`).join('')}
+      ${[['ผู้ประเมิน',`${n} คน`,false],['คะแนนเฉลี่ยรวม',ov.toFixed(2),false],['ระดับความพึงพอใจ',badge(l),true]].map(([lb,v,raw])=>`<div style="background:#fff;border:.5px solid #dde3ee;border-radius:12px;padding:1rem;text-align:center"><div style="font-size:11px;color:#777;margin-bottom:5px">${lb}</div>${raw?v:`<div style="font-size:22px;font-weight:500">${v}</div>`}</div>`).join('')}
     </div>
-    ${statsTable(map,`คำนวณจากคำตอบของผู้รับการนิเทศทั้งหมด (n = ${n} คน, รวม ${totalAns} คำตอบ)`)}
-    ${card(`<div style="font-size:14px;font-weight:500;margin-bottom:14px">กราฟเปรียบเทียบแต่ละด้าน</div>${bars}`)}
+    ${statsTable(map,`n = ${n} คน · รวม ${totalAns} คำตอบ · S.D. ภาพรวม = ${ovSD.toFixed(2)} · ${filterLabel}`)}
+    ${card(`<div style="font-size:14px;font-weight:500;margin-bottom:14px">กราฟคะแนนแต่ละด้าน</div>${bars}`)}
     ${card(`<div style="font-size:14px;font-weight:500;margin-bottom:4px">การกระจายของคะแนน</div><div style="font-size:12px;color:#888;margin-bottom:14px">สัดส่วนคำตอบแต่ละระดับ (${totalAns} คำตอบ)</div><div style="display:flex;gap:10px;align-items:flex-end;height:100px">${distBars}</div>`)}
-    ${netRows?card(`<div style="font-size:14px;font-weight:500;margin-bottom:10px">ผู้ตอบแบ่งตามเครือข่าย (Top 8)</div>${netRows}`):''}
-    <div style="display:flex;gap:10px">
+    `}
+    <div style="display:flex;gap:10px;margin-top:4px">
       <button onclick="goPage('${back}')" style="flex:1;padding:12px;background:transparent;border:1px solid #ccc;border-radius:8px;font-size:13px;color:#666">← กลับ</button>
       <button onclick="reset_()" style="flex:2;padding:12px;background:#1A4E8C;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500">เริ่มประเมินใหม่</button>
     </div>
@@ -526,10 +573,12 @@ function aggPage(){
 
 /* ── Actions ────────────────────────────────────────────────────── */
 window.ans     = (id,v)=>{ S.answers[id]=v; S.warn=false; render(); };
-window.setInfo = (k,v)=>{ S[k]=v; S.warnInfo=false; render(); };
+window.setInfo = (k,v)=>{ S[k]=v; S.warnInfo=false; if(k!=="respondentOther") render(); };
 window.setOpen = (k,v)=>{ S[k]=v; };
 window.goPage  = (p)=>{ S.page=p; render(); window.scrollTo(0,0); };
-window.reset_  = ()=>{ S.answers={}; S.openStrength=''; S.openSuggest=''; S.openNeed=''; S.openOther=''; S.warn=false; S.warnInfo=false; S.network=''; S.visitDate=''; S.respondentType=''; S.respondentOther=''; S.page='survey'; render(); window.scrollTo(0,0); };
+window.reset_  = ()=>{ S.answers={}; S.openStrength=''; S.openSuggest=''; S.openNeed=''; S.openOther=''; S.warn=false; S.warnInfo=false; S.network=''; S.visitDate=''; S.respondentType=''; S.respondentOther=''; S.aggNet=''; S.page='survey'; render(); window.scrollTo(0,0); };
+
+window.setAggNet = (v)=>{ S.aggNet=v; render(); };
 
 window.goAgg = async () => {
   S.prevPage=S.page; S.page='agg'; S.aggLoading=true; render();
